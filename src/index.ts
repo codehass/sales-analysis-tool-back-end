@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import connectToDatabase from './dbServer';
 
 import Sale from './models/Sale';
+import Product from './models/Product';
 
 dotenv.config();
 
@@ -30,9 +31,39 @@ app.get('/api/v1/analytics/total_sales', async (req, res) => {
     }
 });
 
-app.get('/api/v1/analytics/trending_products', (req: Request, res: Response) => {
-  res.send('Trending Products');
+app.get('/api/v1/analytics/trending_products', async (req, res) => {
+    try {
+        const trendingProducts = await Sale.aggregate([
+            {
+                $group: {
+                    _id: "$ProductID",
+                    quantitySold: { $sum: "$Quantity" },
+                    totalSales: { $sum: "$TotalAmount" }, 
+                },
+            },
+            { $sort: { quantitySold: -1 } },
+            { $limit: 3 },
+        ]);
+
+        const result = await Promise.all(
+            trendingProducts.map(async (product) => {
+                const productDetails = await Product.findOne({ ProductID: product._id }).lean();
+
+                return {
+                    productID: product._id,
+                    productName: productDetails?.ProductName || "Unknown Product", 
+                    quantitySold: product.quantitySold,
+                    totalSales: product.totalSales,
+                };
+            })
+        );
+
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ message: "Failed to fetch trending products", error: err });
+    }
 });
+
 
 app.get('/api/v1/analytics/category_sales', (req: Request, res: Response) => {
   res.send('Category Sales');

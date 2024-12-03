@@ -1,10 +1,10 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 interface IProduct extends Document {
-    productID: string;
-    productName: string;
-    category: string;
-    price: number;
+    ProductID: string;
+    ProductName: string;
+    Category: string;
+    Price: number;
 }
 
 const ProductSchema: Schema = new Schema({
