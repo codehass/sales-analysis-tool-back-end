@@ -1,39 +1,51 @@
-import express, {Request,Response,NextFunction} from 'express';
+import express, { Request, Response, NextFunction } from 'express';
+import dotenv from 'dotenv';
+import connectToDatabase from './dbServer';
+
+import Sale from './models/Sale';
+
+dotenv.config();
 
 const app = express();
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+console.log(process.env.PORT);
 
-//routes
+// Connect to the database
+connectToDatabase();
 
-//analytics/total_sales 
-app.get('/api/v1/analytics/total_sales', (req:Request, res:Response, next:NextFunction ) => {
-  res.send('Total Sales');
-} );
+// Middleware
+app.use(express.json());
 
+// Routes
+app.get('/api/v1/analytics/total_sales', async (req, res) => {
+    try {
+        const totalSales = await Sale.aggregate([
+            { $group: { _id: null, total: { $sum: "$TotalAmount" } } },
+        ]);
 
-//analytics/trending_products
-app.get('/api/v1/analytics/trending_products', (req:Request, res:Response, next:NextFunction ) => {
+        res.json({ totalSales: totalSales[0]?.total || 0 });
+    } catch (err) {
+        res.status(500).json({ message: "Failed to fetch total sales", error: err });
+    }
+});
+
+app.get('/api/v1/analytics/trending_products', (req: Request, res: Response) => {
   res.send('Trending Products');
-} ); 
+});
 
-
-//analytics/category_sales
-app.get('/api/v1/analytics/category_sales', (req:Request, res:Response, next:NextFunction ) => {
+app.get('/api/v1/analytics/category_sales', (req: Request, res: Response) => {
   res.send('Category Sales');
-} );
+});
 
-
-//products
-app.get('/api/v1/products', (req:Request, res:Response, next:NextFunction ) => {
+app.get(' ', (req: Request, res: Response) => {
   res.send('Products');
-} ); 
+});
 
-
-app.get('/api/v1/hello', (req:Request, res:Response, next:NextFunction ) => {
+app.get('/api/v1/hello', (req: Request, res: Response) => {
   res.send('Hello World!');
-} );
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
-} );
+});
