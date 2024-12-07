@@ -36,6 +36,8 @@ app.get('/api/v1/analytics/total_sales', async (req, res) => {
 
 app.get('/api/v1/analytics/trending_products', async (req, res) => {
     try {
+        const limit = parseInt(req.query.limit as string) || 3;
+
         const trendingProducts = await Sale.aggregate([
             {
                 $group: {
@@ -45,7 +47,7 @@ app.get('/api/v1/analytics/trending_products', async (req, res) => {
                 },
             },
             { $sort: { quantitySold: -1 } },
-            { $limit: 3 },
+            { $limit: limit },
         ]);
 
         const result = await Promise.all(
@@ -110,34 +112,70 @@ app.get('/api/v1/analytics/category_sales', async (req: Request, res: Response, 
     }
 });
 
-app.get('/api/v1/analytics/products', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const trendingProducts = await Sale.aggregate([
-            {
-                $group: {
-                    _id: "$ProductID",
-                    quantitySold: { $sum: "$Quantity" },
-                    totalSales: { $sum: "$TotalAmount" }, 
-                },
-            },
-        ]);
+// app.get('/api/v1/analytics/products', async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//         const products = await Sale.aggregate([
+//             {
+//                 $group: {
+//                     _id: "$ProductID",
+//                     quantitySold: { $sum: "$Quantity" },
+//                     totalSales: { $sum: "$TotalAmount" }, 
+//                 },
+//             },
+//         ]);
 
-        const result = await Promise.all(
-            trendingProducts.map(async (product) => {
-                const productDetails = await Product.findOne({ ProductID: product._id }).lean();
+//         const result = await Promise.all(
+//             products.map(async (product) => {
+//                 const productDetails = await Product.findOne({ ProductID: product._id }).lean();
 
-                return {
-                    productID: product._id,
-                    productName: productDetails?.ProductName || "Unknown Product", 
-                    quantitySold: product.quantitySold,
-                };
-            })
-        );
+//                 return {
+//                     productID: product._id,
+//                     productName: productDetails?.ProductName || "Unknown Product", 
+//                     quantitySold: product.quantitySold,
+//                 };
+//             })
+//         );
 
-        res.json(result);
-    } catch (err) {
-        res.status(500).json({ message: "Failed to fetch trending products", error: err });
-    }
+//         res.json(result);
+//     } catch (err) {
+//         res.status(500).json({ message: "Failed to fetch trending products", error: err });
+//     }
+// });
+
+app.get('/api/v1/analytics/products', async (req, res) => {
+  try {
+    const productsWithSales = await Product.aggregate([
+      {
+        $lookup: {
+          from: "sales", // The name of your sales collection
+          localField: "ProductID", // The field in the products collection
+          foreignField: "ProductID", // The field in the sales collection
+          as: "sales", // The joined data will appear in this array
+        },
+      },
+      {
+        $addFields: {
+          totalSales: { $sum: "$sales.Quantity" }, // Calculate the total quantity sold
+          firstSaleDate: { $min: "$sales.Date" },  // Get the earliest sale date
+        },
+      },
+      {
+        $project: {
+          _id: 0,                // Exclude the MongoDB ObjectId
+          ProductID: 1,          // Include ProductID
+          ProductName: 1,        // Include ProductName
+          Category: 1,           // Include Category
+          Price: 1,              // Include Price
+          totalSales: 1,         // Include totalSales
+          firstSaleDate: 1,      // Include firstSaleDate
+        },
+      },
+    ]);
+
+    res.json(productsWithSales);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch product data", error: err });
+  }
 });
 
 
