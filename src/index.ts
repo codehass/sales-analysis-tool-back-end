@@ -144,7 +144,8 @@ app.get('/api/v1/analytics/products', async (req, res) => {
 
     res.json(productsWithSales);
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch product data", error: err });
+    const errorMessage = (err instanceof Error) ? err.message : 'Unknown error';
+    res.status(500).json({ message: "Failed to fetch product data", error: errorMessage });
   }
 });
 
