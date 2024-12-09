@@ -112,62 +112,32 @@ app.get('/api/v1/analytics/category_sales', async (req: Request, res: Response, 
     }
 });
 
-// app.get('/api/v1/analytics/products', async (req: Request, res: Response, next: NextFunction) => {
-//     try {
-//         const products = await Sale.aggregate([
-//             {
-//                 $group: {
-//                     _id: "$ProductID",
-//                     quantitySold: { $sum: "$Quantity" },
-//                     totalSales: { $sum: "$TotalAmount" }, 
-//                 },
-//             },
-//         ]);
-
-//         const result = await Promise.all(
-//             products.map(async (product) => {
-//                 const productDetails = await Product.findOne({ ProductID: product._id }).lean();
-
-//                 return {
-//                     productID: product._id,
-//                     productName: productDetails?.ProductName || "Unknown Product", 
-//                     quantitySold: product.quantitySold,
-//                 };
-//             })
-//         );
-
-//         res.json(result);
-//     } catch (err) {
-//         res.status(500).json({ message: "Failed to fetch trending products", error: err });
-//     }
-// });
-
 app.get('/api/v1/analytics/products', async (req, res) => {
   try {
     const productsWithSales = await Product.aggregate([
       {
         $lookup: {
-          from: "sales", // The name of your sales collection
-          localField: "ProductID", // The field in the products collection
-          foreignField: "ProductID", // The field in the sales collection
-          as: "sales", // The joined data will appear in this array
+          from: "sales", 
+          localField: "ProductID", 
+          foreignField: "ProductID", 
+          as: "sales",
         },
       },
       {
         $addFields: {
-          totalSales: { $sum: "$sales.Quantity" }, // Calculate the total quantity sold
-          firstSaleDate: { $min: "$sales.Date" },  // Get the earliest sale date
+          totalSales: { $sum: "$sales.Quantity" },
+          firstSaleDate: { $min: "$sales.Date" },  
         },
       },
       {
         $project: {
-          _id: 0,                // Exclude the MongoDB ObjectId
-          ProductID: 1,          // Include ProductID
-          ProductName: 1,        // Include ProductName
-          Category: 1,           // Include Category
-          Price: 1,              // Include Price
-          totalSales: 1,         // Include totalSales
-          firstSaleDate: 1,      // Include firstSaleDate
+          _id: 0,          
+          ProductID: 1,         
+          ProductName: 1,      
+          Category: 1,           
+          Price: 1,              
+          totalSales: 1,        
+          firstSaleDate: 1,     
         },
       },
     ]);
