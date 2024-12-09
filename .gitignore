@@ -30,3 +30,4 @@ tmp/
 # Debugging files
 *.test.js
 *.spec.js
+.env
